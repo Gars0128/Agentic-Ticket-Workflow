@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+temporalio
+pydantic
+pydantic-settings
+httpx
+pytest
+pytest-asyncio
