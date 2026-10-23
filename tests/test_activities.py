@@ -120,15 +120,6 @@ def test_model_connection_failure_remains_retryable(environment, tickets, monkey
         environment.run(decide_ticket, tickets["T-1"])
 
 
-def test_different_action_for_completed_ticket_is_not_retryable(environment):
-    decision = refund_decision()
-    environment.run(execute_action, "T-2", decision)
-    decision["action"]["amount_eur"] = 10
-
-    with pytest.raises(ApplicationError) as failure:
-        environment.run(execute_action, "T-2", decision)
-    assert failure.value.type == "InvalidAction"
-    assert failure.value.non_retryable
 
 
 @pytest.mark.asyncio

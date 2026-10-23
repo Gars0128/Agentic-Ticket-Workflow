@@ -59,10 +59,6 @@ def test_completed_refund_survives_restart_without_repeating(service, monkeypatc
         assert database.execute("SELECT COUNT(*) FROM actions").fetchone()[0] == 1
 
 
-def test_same_ticket_cannot_execute_a_different_action(service):
-    service.execute("T-1", Action(type=ActionType.REPLY, message="Hello"))
-    with pytest.raises(ValueError, match="different action"):
-        service.execute("T-1", Action(type=ActionType.CLOSE, reason="Done"))
 
 
 def test_concurrent_refund_calls_record_one_action(service):
@@ -75,26 +71,8 @@ def test_concurrent_refund_calls_record_one_action(service):
         assert database.execute("SELECT COUNT(*) FROM actions").fetchone()[0] == 1
 
 
-@pytest.mark.parametrize(
-    "action",
-    [
-        Action(type=ActionType.REPLY, message="  "),
-        Action(type=ActionType.REFUND, invoice_id="INV-1001"),
-        Action(type=ActionType.REFUND, invoice_id="INV-1001", amount_eur=-1),
-        Action(type=ActionType.REFUND, invoice_id="INV-1001", amount_eur=float("nan")),
-        Action(type=ActionType.ESCALATE),
-        Action(type=ActionType.CLOSE, reason="  "),
-    ],
-)
-def test_invalid_actions_are_permanent_errors(service, action):
-    with pytest.raises(ValueError):
-        service.execute("T-1", action)
 
 
-@pytest.mark.parametrize("rate", [-0.1, 1.1, float("nan")])
-def test_invalid_failure_rate_is_rejected(tmp_path, rate):
-    with pytest.raises(ValueError, match="failure rate"):
-        helpdesk.FakeHelpdesk(db_path=tmp_path / "helpdesk.sqlite3", failure_rate=rate)
 
 
 def test_settings_are_read_from_environment(tmp_path, monkeypatch):

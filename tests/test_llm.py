@@ -129,3 +129,34 @@ def test_unsupported_mode_is_explicit(tickets, monkeypatch):
     monkeypatch.setenv("LLM_MODE", "unknown")
     with pytest.raises(ValueError, match="Unsupported LLM_MODE"):
         llm.decide(tickets["T-1"])
+
+
+def test_anthropic_mode_runs_tools_and_reads_decision(tickets, monkeypatch):
+    """The real-model loop, with a stub client instead of the network."""
+    from types import SimpleNamespace as Block
+
+    replies = iter([
+        [Block(type="tool_use", id="1", name="search_kb", input={"query": "reset password"})],
+        [Block(type="tool_use", id="2", name="submit_decision", input={
+            "category": "account",
+            "priority": "normal",
+            "action": {"type": "reply", "message": "Use 'Forgot password'.", "articles": ["KB-1"]},
+        })],
+    ])
+    requests = []
+
+    def create(**request):
+        requests.append(request)
+        return Block(stop_reason="tool_use", content=next(replies))
+
+    client = Block(beta=Block(messages=Block(create=create)))
+    monkeypatch.setattr(llm.anthropic, "Anthropic", lambda: client)
+    monkeypatch.setenv("LLM_MODE", "anthropic")
+
+    decision = llm.decide(tickets["T-1"])
+    assert decision.action.articles == ["KB-1"]
+    # The search result went back to the model as a tool_result.
+    messages = requests[1]["messages"]  # user, assistant, tool results, assistant
+    tool_result = messages[2]["content"][0]
+    assert tool_result["tool_use_id"] == "1"
+    assert "KB-1" in tool_result["content"]

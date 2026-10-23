@@ -56,19 +56,16 @@ def fake_llm(ticket: dict, tool_results: dict) -> dict | Decision:
             refund_amount = float(requested_amount[1])
 
         elif "charged twice" in ticket_text:
-            # shortcut: matching month and amount imply a duplicate in the examples;
+            # shortcut: same month and amount means a duplicate in the examples;
             # real billing would need payment transaction IDs to confirm this.
-            for index, candidate in enumerate(paid_invoices):
-                has_matching_invoice = any(
-                    previous["month"] == candidate["month"]
-                    and previous["amount_eur"] == candidate["amount_eur"]
-                    for previous in paid_invoices[:index]
-                )
-
-                if has_matching_invoice:
-                    refund_invoice = candidate
-                    refund_amount = candidate["amount_eur"]
+            seen = set()
+            for invoice in paid_invoices:
+                key = (invoice["month"], invoice["amount_eur"])
+                if key in seen:
+                    refund_invoice = invoice
+                    refund_amount = invoice["amount_eur"]
                     break
+                seen.add(key)
 
         if refund_invoice is None:
             action = Action(

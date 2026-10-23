@@ -22,6 +22,10 @@ def decide_ticket(ticket: dict) -> dict:
             non_retryable=True,
         ) from error
 
+    activity.logger.info(
+        f"Model proposed: {decision.action.type.value}",
+        extra={"ticket_id": ticket["ticket_id"]},
+    )
     # Plain JSON-compatible values work with Temporal's default data converter.
     return decision.model_dump(mode="json")
 
@@ -48,8 +52,14 @@ def execute_action(ticket_id: str, decision_data: dict) -> dict:
     """Execute the checked action after any required workflow approval."""
     try:
         decision = Decision.model_validate(decision_data)
-        return FakeHelpdesk().execute(ticket_id, decision.action)
+        result = FakeHelpdesk().execute(ticket_id, decision.action)
+        activity.logger.info("Helpdesk action done", extra={"ticket_id": ticket_id})
+        return result
     except TemporaryHelpdeskError as error:
+        activity.logger.warning(
+            f"Helpdesk failed (attempt {activity.info().attempt}), will retry",
+            extra={"ticket_id": ticket_id},
+        )
         # Let Temporal retry; the stable ticket ID prevents duplicate actions.
         raise ApplicationError(
             str(error), type="TemporaryHelpdeskError"

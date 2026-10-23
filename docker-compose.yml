@@ -1,0 +1,30 @@
+services:
+  # Temporal dev server with its web UI on http://localhost:8233
+  temporal:
+    image: temporalio/temporal:latest
+    command: ["server", "start-dev", "--ip", "0.0.0.0"]
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    environment:
+      TEMPORAL_HOST: temporal:7233
+      LLM_MODE: ${LLM_MODE:-fake}
+      LLM_MODEL: ${LLM_MODEL:-claude-opus-5-5}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HELPDESK_FAILURE_RATE: ${HELPDESK_FAILURE_RATE:-0.3}
+    depends_on: [temporal]
+    restart: on-failure # Temporal needs a few seconds to start
+
+  api:
+    build: .
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      TEMPORAL_HOST: temporal:7233
+    depends_on: [temporal]
+    restart: on-failure

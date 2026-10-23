@@ -1,0 +1,6 @@
+.venv
+.git
+.env
+tests
+**/__pycache__
+data/helpdesk.sqlite3*

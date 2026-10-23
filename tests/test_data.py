@@ -1,4 +1,4 @@
-from app.services.data import get_customer, get_invoices, search_kb, get_customer_name
+from app.services.data import get_customer, get_invoices, search_kb
 
 
 def test_get_customer_found():
@@ -24,6 +24,3 @@ def test_search_kb_finds_password_article():
 
 def test_search_kb_no_match():
     assert search_kb("pizza") == []
-
-def test_get_customer_name_found():
-    assert get_customer_name("C-100") == "Northwind Bakery"

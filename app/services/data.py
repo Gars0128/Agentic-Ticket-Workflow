@@ -20,9 +20,6 @@ def get_customer(customer_id: str) -> dict | None:
             return customer
     return None
 
-def get_customer_name(customer_id: str) -> str | None:
-    customer = get_customer(customer_id)
-    return customer["name"] if customer else None
 
 
 
