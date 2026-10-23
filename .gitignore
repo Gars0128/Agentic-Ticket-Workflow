@@ -4,3 +4,4 @@ __pycache__/
 .env
 *.pyc
 data/helpdesk.sqlite3*
+.pytest_tmp/
