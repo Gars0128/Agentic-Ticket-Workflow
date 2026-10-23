@@ -127,7 +127,7 @@ reads them with a Temporal query, so the state is available at any time, even af
 | Situation | How it is handled |
 | --- | --- |
 | LLM briefly unavailable | `decide_ticket`: 2 min timeout, up to 3 attempts. After that the workflow escalates the ticket. |
-| Model answer cannot be read, unknown tool, too many tool calls | `ApplicationError(non_retryable=True)`: no retry, the ticket is escalated with the reason |
+| Model answer cannot be read, unknown tool, too many tool calls | Model answers vary, so the same limit applies: up to 3 attempts, then the workflow escalates the ticket with the reason |
 | Unknown customer | `get_customer` returns `null`, so the agent escalates. Nothing is retried. |
 | Helpdesk temporary error (`HELPDESK_FAILURE_RATE`) | `execute_action`: 30 s timeout, up to 5 attempts. If all fail, the workflow fails with "Helpdesk action failed: ...". |
 | Activity retried after the action already happened | The Helpdesk stores one action per ticket in SQLite (`ticket_id` is the primary key). A repeat returns the saved result, so a refund is issued once. |
@@ -250,8 +250,8 @@ Why they differ:
 - **The small model does not follow the tool protocol.** In 5 of 7 tickets it
   wrote the answer as plain text instead of calling `submit_decision`. In an
   earlier single run, it answered T-1 correctly, so its results also vary from
-  run to run. The code treats a missing decision as a non-retryable error, so in
-  the workflow these tickets would go to a person rather than get a wrong action.
+  run to run. In the workflow, a missing decision is tried up to 3 times; after
+  that the ticket goes to a person rather than getting a wrong action.
 - **It also makes judgment mistakes.** It called the T-3 outage `billing` and
   replied without an article. The rules allow this, because it breaks no rule.
   The rules only protect against unsafe actions, not against a weak answer.

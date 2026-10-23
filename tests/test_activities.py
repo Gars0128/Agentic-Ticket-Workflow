@@ -94,21 +94,22 @@ def test_malformed_decision_is_not_retryable(environment, activity_function):
     assert failure.value.non_retryable
 
 
-def test_invalid_ticket_is_not_retryable(environment):
-    with pytest.raises(ApplicationError) as failure:
-        environment.run(decide_ticket, {})
-    assert failure.value.type == "InvalidDecision"
-    assert failure.value.non_retryable
-
-
-def test_exhausted_tool_loop_is_not_retryable(environment, tickets, monkeypatch):
+@pytest.mark.parametrize(
+    "model_error",
+    [
+        ValueError("Model stopped without calling submit_decision"),
+        RuntimeError("Model exceeded the tool call limit"),
+    ],
+)
+def test_unreadable_model_answer_is_retried(environment, tickets, monkeypatch, model_error):
     def broken_model(ticket):
-        raise RuntimeError("Model exceeded the tool call limit")
+        raise model_error
 
     monkeypatch.setattr(llm, "decide", broken_model)
     with pytest.raises(ApplicationError) as failure:
         environment.run(decide_ticket, tickets["T-1"])
-    assert failure.value.non_retryable
+    assert failure.value.type == "UnreadableModelAnswer"
+    assert not failure.value.non_retryable  # the workflow's retry policy sets the limit
 
 
 def test_model_connection_failure_remains_retryable(environment, tickets, monkeypatch):

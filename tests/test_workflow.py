@@ -23,12 +23,15 @@ REFUND = {
 }
 
 
-def fake_activities(decision: dict, helpdesk_failures: int = 0):
+def fake_activities(decision: dict, helpdesk_failures: int = 0, bad_model_answers: int = 0):
     """Activities with the real names, but no LLM, files or random failures."""
-    calls = {"execute_action": 0}
+    calls = {"decide_ticket": 0, "execute_action": 0}
 
     @activity.defn(name="decide_ticket")
     async def decide_ticket(ticket: dict) -> dict:
+        calls["decide_ticket"] += 1
+        if calls["decide_ticket"] <= bad_model_answers:
+            raise ValueError("Model stopped without calling submit_decision")
         return decision
 
     @activity.defn(name="check_ticket_decision")
@@ -109,3 +112,24 @@ async def test_failed_activity_succeeds_after_retry(env):
 
     assert result["status"] == "completed"
     assert calls["execute_action"] == 3
+
+
+async def test_bad_model_answer_is_retried(env):
+    activities, calls = fake_activities(REPLY, bad_model_answers=2)
+    worker, handle = await start(env, activities)
+    async with worker:
+        result = await handle.result()
+
+    assert result["action"]["type"] == "reply"
+    assert calls["decide_ticket"] == 3
+
+
+async def test_model_answer_unreadable_after_retries_is_escalated(env):
+    activities, calls = fake_activities(REPLY, bad_model_answers=99)
+    worker, handle = await start(env, activities)
+    async with worker:
+        result = await handle.result()
+
+    assert calls["decide_ticket"] == 3  # LLM_RETRY limit, not forever
+    assert result["action"]["type"] == "escalate"
+    assert result["action"]["reason"].startswith("No decision from the model")

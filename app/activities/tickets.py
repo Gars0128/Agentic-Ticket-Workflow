@@ -15,11 +15,10 @@ def decide_ticket(ticket: dict) -> dict:
     try:
         decision = Decision.model_validate(llm.decide(ticket))
     except (KeyError, TypeError, ValueError, RuntimeError) as error:
-        # Invalid inputs, answers and exhausted tool loops need correction, not retries.
+        # Model answers vary, so a bad one is worth another try. The workflow's
+        # retry policy limits the attempts and then escalates the ticket.
         raise ApplicationError(
-            f"Cannot produce a decision: {error}",
-            type="InvalidDecision",
-            non_retryable=True,
+            f"Cannot read the model's answer: {error}", type="UnreadableModelAnswer"
         ) from error
 
     activity.logger.info(
