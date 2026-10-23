@@ -193,7 +193,7 @@ rate limit: cap the activity concurrency per worker with `max_concurrent_activit
 ## How I used AI coding assistants
 
 I used Claude Code as a pair programmer. 
-Most of the code was written by him im reviewing and chicking if its ok or not .
+Most of the code was written by him im reviewing and checking if its ok or not.
 
 **How I worked**
 
